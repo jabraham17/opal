@@ -113,34 +113,7 @@ std::string CompiledRegex::toNasm(std::string name) {
 
   // // code gen functions
   for(auto i : func.instructions) {
- if(Load* inst = dynamic_cast<Load*>(i)) {
-    //   std::string ext = loadExtForType(inst->dest->type, inst->loadType);
-    //   std::string size = loadSizeForType(inst->loadType);
-
-    //   ss << "  mov" << ext << " " << inst->dest->getLValue(true) << "," << size
-    //      << " [" << inst->base->getRValue(true) << " + "
-    //      << inst->offset->getRValue(true) << "]\n";
-    // } else 
-    if(Add* inst = dynamic_cast<Add*>(i)) {
-      ss << "  add " << inst->dest->getLValue(true) << ", "
-         << inst->op1->getRValue(true) << "\n";
-    } else if(Jump* inst = dynamic_cast<Jump*>(i)) {
-      ss << "  jmp .state_" << intptr_t(inst->target) << "\n";
-    } else if(ConditionalJump* inst = dynamic_cast<ConditionalJump*>(i)) {
-      ss << "  cmp " << inst->lhs->getRValue(true) << ", "
-         << inst->rhs->getRValue(true) << "\n";
-      ss << "  j" << toString(inst->cc, true) << " .state_"
-         << intptr_t(inst->target) << "\n";
-    } else if(Copy* inst = dynamic_cast<Copy*>(i)) {
-      ss << "  mov " << inst->dest->getLValue(true) << ", "
-         << inst->source->getRValue(true) << "\n";
-    } else if(Return* inst = dynamic_cast<Return*>(i)) {
-      ss << ".state_" << intptr_t(inst) << ":\n";
-      ss << "  ret\n";
-    }
-    else {
       ss << i->toNasm() << "\n";
-    }
   }
 
   return ss.str();

@@ -107,13 +107,15 @@ struct Instruction {
   virtual std::vector<unsigned char> toBytes() { return {}; }
   virtual std::string toC() { return ""; }
   virtual std::string toNasm() { return ""; }
+  virtual std::string getCLabel() {
+    return "state_" + std::to_string(intptr_t(this));
+  }
+  virtual std::string getNasmLabel() { return "." + getCLabel(); }
 };
 struct NOP : public Instruction {
   std::vector<unsigned char> toBytes() override { return {}; }
   std::string toC() override { return ""; }
-  std::string toNasm() override {
-    return ".state_" + std::to_string(intptr_t(this)) + ":";
-  }
+  std::string toNasm() override { return this->getNasmLabel() + ":"; }
 };
 
 std::string loadExtForType(Types destType, Types loadType);
@@ -142,7 +144,11 @@ struct Add : public Instruction {
   Variable* op1;
   std::vector<unsigned char> toBytes() override { return {}; }
   std::string toC() override { return ""; }
-  std::string toNasm() override { return ""; }
+  std::string toNasm() override {
+    std::string ret =
+        "add " + dest->getLValue(true) + ", " + op1->getRValue(true);
+    return ret;
+  }
 };
 enum class ConditionCode { EQ, NEQ, GT, GTEQ, LT, LTEQ };
 std::string toString(ConditionCode cc, bool isAsm = false);
@@ -150,7 +156,10 @@ struct Jump : public Instruction {
   Instruction* target;
   std::vector<unsigned char> toBytes() override { return {}; }
   std::string toC() override { return ""; }
-  std::string toNasm() override { return ""; }
+  std::string toNasm() override {
+    std::string ret = "jmp " + target->getNasmLabel();
+    return ret;
+  }
 };
 struct ConditionalJump : public Instruction {
   Variable* lhs;
@@ -159,20 +168,32 @@ struct ConditionalJump : public Instruction {
   Instruction* target;
   std::vector<unsigned char> toBytes() override { return {}; }
   std::string toC() override { return ""; }
-  std::string toNasm() override { return ""; }
+  std::string toNasm() override {
+    std::string ret = "cmp " + lhs->getRValue(true) + ", " +
+                      rhs->getRValue(true) + "\n" + "j" + toString(cc, true) +
+                      " " + target->getNasmLabel();
+    return ret;
+  }
 };
 struct Copy : public Instruction {
   Variable* dest;
   Variable* source;
   std::vector<unsigned char> toBytes() override { return {}; }
   std::string toC() override { return ""; }
-  std::string toNasm() override { return ""; }
+  std::string toNasm() override {
+    std::string ret =
+        "mov " + dest->getLValue(true) + ", " + source->getRValue(true);
+    return ret;
+  }
 };
 struct Return : public Instruction {
   Variable* value;
   std::vector<unsigned char> toBytes() override { return {}; }
   std::string toC() override { return ""; }
-  std::string toNasm() override { return ""; }
+  std::string toNasm() override {
+    std::string ret = this->getNasmLabel() + ":\n" + "ret";
+    return ret;
+  }
 };
 
 struct InstructionList;
