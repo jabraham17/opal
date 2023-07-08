@@ -96,8 +96,8 @@ int main() {
 
 
   system("nasm -felf64 testing/inAsm.asm -o testing/bin/inAsm.o");
-  system("clang testing/test.c testing/bin/inAsm.o testing/bin/matcher_c.o -o match_c");
-  system("clang testing/test.c testing/bin/inAsm.o testing/bin/matcher_asm.o -o match_asm");
+  system("clang testing/test.c testing/bin/inAsm.o testing/bin/matcher_c.o -o match_c.out");
+  system("clang testing/test.c testing/bin/inAsm.o testing/bin/matcher_asm.o -o match_asm.out");
 
   return 0;
 }
