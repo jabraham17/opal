@@ -4,12 +4,14 @@
 #include <fstream>
 #include <iostream>
 #include <vector>
+#include <chrono>
 
 #include "parse_regex.h"
 
-void toPng(StateList* sl, std::string basename, int idx) {
-  std::string dotName = basename + std::to_string(idx) + ".dot";
-  std::string pngName = basename + std::to_string(idx) + ".png";
+void toPng(StateList* sl, std::string name, int idx) {
+  std::string basename = "imgs/" +name + std::to_string(idx);
+  std::string dotName = basename + ".dot";
+  std::string pngName = basename + ".png";
     auto g = sl->toGraph("g");
   auto s = g->toString();
   std::ofstream out(dotName);
@@ -21,6 +23,8 @@ void toPng(StateList* sl, std::string basename, int idx) {
 int main(int argc, char** argv) {
 
   Parser p;
+
+  system("mkdir -p imgs");
 
   for(int i = 1; i < argc; i++) {
     std::string str(argv[i]);
@@ -40,10 +44,12 @@ int main(int argc, char** argv) {
     std::cout << "  pruned-nfa has " << sl->states().size() << " states\n";
     toPng(&(*sl), "pruned-nfa", i);
     
+    auto start = std::chrono::high_resolution_clock::now();
     auto dfa = sl->buildDFA();
+    auto stop = std::chrono::high_resolution_clock::now();
 
-    std::cout << "  dfa has " << dfa.states().size() << " states\n";
-    toPng(&dfa, "dfa", i);
+    std::cout << "  dfa has " << dfa.states().size() << " states and took " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms\n";
+    // toPng(&dfa, "dfa", i);
 
     dfa.prune();
 
