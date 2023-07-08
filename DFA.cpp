@@ -342,7 +342,7 @@ static bool allReachableWithoutConsuming(State* from, const Set& set) {
 
 static State* findStateInMap(
     const Set& toFind,
-    std::unordered_map<const Set*, State*> NSetToD) {
+    const std::unordered_map<const Set*, State*>& NSetToD) {
   for(const auto& [set, state] : NSetToD) {
     if(toFind == *set) return state;
   }
