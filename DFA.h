@@ -197,6 +197,7 @@ public:
 
   void prune() { 
     pruneOnlyEpsilonLeaving(); 
+    pruneDeadStates();
     // if no transitions leave and its not an accept, prune
     // if no transitions enter and its not an accept, prune
     }
@@ -212,6 +213,9 @@ public:
 private:
   // if all nodes leaving node are epsilon, we can remove this node
   void pruneOnlyEpsilonLeaving();
+  // its a dead state if no transitions leave and its not an accept
+  // its a dead state if no transitions enter and its not a start
+  void pruneDeadStates();
 };
 
 // class NFA {

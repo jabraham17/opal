@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <queue>
 #include <sstream>
 #include <unordered_map>
 #include <unordered_set>
@@ -166,6 +167,104 @@ void StateList::pruneOnlyEpsilonLeaving() {
   }
 }
 
+static std::unordered_set<State*> reachableStates(State* s) {
+  std::unordered_set<State*> reachable;
+  std::unordered_set<State*> explored;
+  std::queue<State*> toExplore;
+  toExplore.push(s);
+  while(!toExplore.empty()) {
+    auto next = toExplore.front();
+    toExplore.pop();
+    reachable.insert(next);
+    explored.insert(next);
+    for(const auto& t : next->transitions()) {
+      if(explored.count(t.toState()) == 0) toExplore.push(t.toState());
+    }
+  }
+  return reachable;
+}
+
+#include <fstream>
+
+void StateList::pruneDeadStates() {
+  std::unordered_set<State*> pruned;
+  // do this until no more
+  bool changed = true;
+  int i = 0;
+  while(changed) {
+
+    changed = false;
+    // 1. its a dead state if no transitions leave and its not an accept
+    // auto it = this->states_.begin();
+    // while(it != this->states_.end()) {
+
+    //   auto state = it->get();
+    //   if(this->entry() == state) {
+    //     it++;
+    //     continue;
+    //   }
+
+    //   // if not an accept and no transitions leave, remove it
+    //   if(!state->isAccept() && state->transitions().empty()) {
+    //     // remove this state
+    //     pruned.insert(state);
+    //     it = this->states_.erase(it);
+    //     changed = true;
+    //   } else {
+    //     it++;
+    //   }
+    // }
+
+    // // remove pruned states from transitions
+    // for(const auto& s : this->states()) {
+    //   for(const auto& t : s->transitions()) {
+    //     if(pruned.count(t.toState()) != 0) {
+    //       s->removeTransition(t);
+    //     }
+    //   }
+    // }
+
+    // 2. its a dead state if no transitions enter and its not a start
+    // walk the tree from the entry and build a set of undead nodes
+    auto reachable = reachableStates(this->entry());
+
+
+    auto it = this->states_.begin();
+    while(it != this->states_.end()) {
+      auto state = it->get();
+
+      // if not entry and not reachable
+      if(this->entry() != state && reachable.count(state) == 0) {
+        // remove this state
+        it = this->states_.erase(it);
+        pruned.insert(state);
+        changed = true;
+      } else {
+        it++;
+      }
+    }
+
+    // remove pruned states from transitions
+    for(const auto& s : this->states()) {
+      auto trans = s->transitions();
+      for(const auto& t : trans) {
+        if(pruned.count(t.toState()) != 0) {
+          s->removeTransition(t);
+        }
+      }
+    }
+
+
+  auto g = toGraph("g");
+  auto s = g->toString();
+  std::ofstream plain("out"+std::to_string(++i)+".dot");
+  plain << s << "\n";
+  plain.close();
+  system(std::string("dot -Tpng out"+std::to_string(i)+".dot -o out"+std::to_string(i)+".png").c_str());
+
+  }
+}
+
 bool StateList::isDFA() const {
   // all states must be a DFA
   for(const auto& s : this->states()) {
@@ -203,8 +302,6 @@ static bool containsAcceptState(const Set& set) {
     return s->isAccept();
   });
 }
-
-#include <queue>
 
 // returns set of all reachable nodes from `from`, including itself
 static Set reachableWithoutConsuming(State* from) {

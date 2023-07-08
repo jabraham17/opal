@@ -64,7 +64,7 @@ int main() {
   auto newSl = p.parse(regex, [](auto msg) { std::cerr << msg << "\n"; });
 
   // StateList sl;
-  // if(0) {
+  // {
   //   auto q1 = std::make_unique<State>("q1", true);
   //   auto q2 = std::make_unique<State>("q2");
   //   auto q3 = std::make_unique<State>("q3");
@@ -78,7 +78,6 @@ int main() {
   //   sl.add(std::move(q2));
   //   sl.add(std::move(q3));
   // }
-
   // StateList* newSl = &sl;
 
   if(!newSl) {
@@ -106,6 +105,8 @@ int main() {
   std::cout << "nfa with " << newSl->states().size()
             << " states became a dfa with " << dfa.states().size()
             << " states\n";
+  dfa.prune();
+  std::cout << "after pruning: " << dfa.states().size() << "\n";
 
   auto g3 = dfa.toGraph("g3");
   auto s3 = g3->toString();
