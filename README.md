@@ -25,26 +25,34 @@ implement efficent regex by compiling to my simple regex, then nfa, then dfa, th
 We can handle wild cards with special states in the DFA
 
 
-- todo
-  - powerset construction
-  - fix parser
-    - allow basic concat, union, kleene, and grouping
-    - add `+`, `?`
-    - add `()` as capturing groups
-    - add `(?:)`, supports non capturing groups
-    - add `[]`
-    - add `.`
-    - non greedy matching `+?` and `*?`
-    - add `[^]`
-    - add `{n}`
-    - add `{min,}`
-    - add `{,max}`
-    - add `{min,max}`
-    - add `^` and `$`, supports search vs match
-    - back references, maybe doing a limited max of 9 or soemething
-    - possessive matching
-    - look ahead and look behind
-    - consider predefined character groups
-  - add support to extract groups
-  - add a search vs match mode
-  - jitted regex
+feature
+- powerset construction
+- fix parser
+  - allow basic concat, union, kleene, and grouping
+  - add `+`, `?`
+  - add `()` as capturing groups
+  - add `(?:)`, supports non capturing groups
+  - add `[]`
+  - add `.`
+  - non greedy matching `+?` and `*?`
+  - add `[^]`
+  - add `{n}`
+  - add `{min,}`
+  - add `{,max}`
+  - add `{min,max}`
+  - add `^` and `$`, supports search vs match
+  - back references, maybe doing a limited max of 9 or soemething
+  - possessive matching
+  - look ahead and look behind
+  - consider predefined character groups
+- add support to extract groups
+- add a search vs match mode
+- jitted regex
+
+
+software engineering todo
+- add my suite of makefile and scripts
+- separate out files
+- ensure better const correctness
+- toC, toNasm, etc using visiotor pattern
+- add iterator support for states and transitions
