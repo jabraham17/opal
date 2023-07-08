@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-enum class Types { CHAR, CHAR_STAR, LONG, INT };
+enum class Types { CHAR, CHAR_STAR, CONST_CHAR_STAR, LONG, INT };
 std::string toString(Types t);
 
 enum class X86Register { NONE, DI, SI, D, A, C, R8, R9, R10, R11 };
@@ -427,6 +427,7 @@ template <size_t Parameters, size_t Locals> struct Function {
   std::array<Types, Parameters> argTypes;
   std::array<Variable, Parameters + Locals> variables;
   InstructionList instructions;
+  std::string signature(std::string name);
 };
 
 class State;
@@ -436,7 +437,7 @@ public:
   CompiledRegex() {
     // function signature
     func.retType = Types::LONG;
-    func.argTypes[0] = Types::CHAR_STAR;
+    func.argTypes[0] = Types::CONST_CHAR_STAR;
     func.argTypes[1] = Types::LONG;
 
     //  parameters
@@ -466,6 +467,7 @@ public:
 public:
   std::string toC(std::string name = "match");
   std::string toNasm(std::string name = "match");
+  std::string toHeader(std::string name = "match");
 
 public:
   InstructionList* getNewBlockForState(State*);

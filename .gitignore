@@ -2,3 +2,4 @@
 *.png
 testing/bin/*
 *.dot
+bin/*

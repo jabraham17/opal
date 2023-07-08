@@ -10,6 +10,7 @@ InstructionListIterator::InstructionListIterator(InstructionList* list)
 std::string toString(Types t) {
   if(t == Types::CHAR) return "char";
   if(t == Types::CHAR_STAR) return "char*";
+  if(t == Types::CONST_CHAR_STAR) return "const char*";
   if(t == Types::LONG) return "long";
   if(t == Types::INT) return "int";
   return "<unknown>";
@@ -30,6 +31,7 @@ std::string toString(X86Register reg, Types t) {
       switch(t) {
         case Types::CHAR: return "dil";
         case Types::CHAR_STAR: return "rdi";
+        case Types::CONST_CHAR_STAR: return "rdi";
         case Types::LONG: return "rdi";
         case Types::INT: return "edi";
       }
@@ -37,6 +39,7 @@ std::string toString(X86Register reg, Types t) {
       switch(t) {
         case Types::CHAR: return "sil";
         case Types::CHAR_STAR: return "rsi";
+        case Types::CONST_CHAR_STAR: return "rsi";
         case Types::LONG: return "rsi";
         case Types::INT: return "esi";
       }
@@ -44,6 +47,7 @@ std::string toString(X86Register reg, Types t) {
       switch(t) {
         case Types::CHAR: return "dl";
         case Types::CHAR_STAR: return "rdx";
+        case Types::CONST_CHAR_STAR: return "rdx";
         case Types::LONG: return "rdx";
         case Types::INT: return "edx";
       }
@@ -51,6 +55,7 @@ std::string toString(X86Register reg, Types t) {
       switch(t) {
         case Types::CHAR: return "al";
         case Types::CHAR_STAR: return "rax";
+        case Types::CONST_CHAR_STAR: return "rax";
         case Types::LONG: return "rax";
         case Types::INT: return "eax";
       }
@@ -58,6 +63,7 @@ std::string toString(X86Register reg, Types t) {
       switch(t) {
         case Types::CHAR: return "cl";
         case Types::CHAR_STAR: return "rcx";
+        case Types::CONST_CHAR_STAR: return "rcx";
         case Types::LONG: return "rcx";
         case Types::INT: return "ecx";
       }
@@ -113,25 +119,37 @@ std::string CompiledRegex::toNasm(std::string name) {
 
   // // code gen functions
   for(auto i : func.instructions) {
-      ss << i->toNasm() << "\n";
+    ss << i->toNasm() << "\n";
   }
 
   return ss.str();
 }
-std::string CompiledRegex::toC(std::string name) {
 
+template <size_t Parameters, size_t Locals>
+std::string Function<Parameters, Locals>::signature(std::string name) {
   std::stringstream ss;
-
   // func header
-  ss << toString(func.retType) << " " << name << "(";
+  ss << toString(retType) << " " << name << "(";
   std::string sep;
-  for(auto p : func.variables) {
+  for(auto p : variables) {
     if(p.isParameter()) {
       ss << sep << toString(p.type) << " " << p.name;
       sep = ", ";
     }
   }
-  ss << ") {\n";
+  ss << ")";
+  return ss.str();
+}
+
+std::string CompiledRegex::toHeader(std::string name) {
+  std::string ret = func.signature(name) + ";";
+  return ret;
+}
+std::string CompiledRegex::toC(std::string name) {
+
+  std::stringstream ss;
+
+  ss << func.signature(name) << " {\n";
 
   // variable init
   for(auto p : func.variables) {
@@ -165,8 +183,7 @@ std::string CompiledRegex::toC(std::string name) {
     } else if(Return* inst = dynamic_cast<Return*>(i)) {
       ss << "state_" << intptr_t(inst) << ":\n";
       ss << "  return " << inst->value->getRValue() << ";\n";
-    }
-      else {
+    } else {
       ss << i->toC();
     }
   }
