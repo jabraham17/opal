@@ -340,6 +340,7 @@ static bool allReachableWithoutConsuming(State* from, const Set& set) {
   });
 }
 
+// linear search here is gonna be slow
 static State* findStateInMap(
     const Set& toFind,
     const std::unordered_map<const Set*, State*>& NSetToD) {
