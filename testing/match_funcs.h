@@ -7,5 +7,5 @@ long match_bacStard(char* input, long n);
 long match(char*, long);
 
 matchFunc funcs[] = {match_aaStar, match_borcd, match_bacStard, match};
-char* regexNames[] = {"aa*", "(b|c)d", "(ba|c*)d", "ab"};
+char* regexNames[] = {"aa*", "(b|c)d", "(ba|c*)d", "(ab|a)*"};
 int n_funcs = 4;
