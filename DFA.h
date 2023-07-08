@@ -8,8 +8,33 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <type_traits>
+#include <typeinfo>
 #include <utility>
 #include <vector>
+
+#define CONST_THIS                                                             \
+  const_cast<std::add_pointer_t<                                               \
+      std::add_const_t<std::remove_pointer_t<decltype(this)>>>>(this)
+
+// clang-format off
+#define CONST_MEMBER_FUNC_BODY(retType, name, body)                            \
+  retType name() const body \
+  retType name() { return CONST_THIS->name(); }
+// clang-format on
+
+#define CONST_MEMBER_FUNC(retType, name)                                       \
+  CONST_MEMBER_FUNC_BODY(retType, name, ;)
+
+#define CONST_MEMBER_FUNC_GETTER_TYPED(retType, name, val)                     \
+  CONST_MEMBER_FUNC_BODY(retType, name, { return val; })
+
+#define CONST_MEMBER_FUNC_GETTER(name, val)                                    \
+  CONST_MEMBER_FUNC_GETTER_TYPED(auto, name, val)
+
+#define CONST_MEMBER_FUNC_NO_RET(name)                                         \
+  void name() const;                                                           \
+  void name() { CONST_THIS->name(); }
 
 class State;
 class Transition {
@@ -22,10 +47,10 @@ public:
   Transition(State* fromState, State* toState, std::string label = "")
       : fromState_(fromState), toState_(toState), label_(label) {}
 
-  State* fromState() { return fromState_; }
-  State* toState() { return toState_; }
-  std::string label() { return label_; }
-  bool isEpsilon() { return label_.empty(); }
+  CONST_MEMBER_FUNC_GETTER(fromState, fromState_);
+  CONST_MEMBER_FUNC_GETTER(toState, toState_);
+  CONST_MEMBER_FUNC_GETTER(label, label_);
+  CONST_MEMBER_FUNC_GETTER(isEpsilon, label_.empty());
 
   friend bool operator==(const Transition& lhs, const Transition& rhs) {
     return lhs.fromState_ == rhs.fromState_ && lhs.toState_ == rhs.toState_ &&
@@ -41,9 +66,15 @@ private:
   bool isAccept_;
 
 public:
-  State(bool isAccept = false) : State("", isAccept) {}
-  State(std::string name, bool isAccept = false)
+  State(const std::string& name, bool isAccept = false)
       : name_(name), isAccept_(isAccept) {}
+
+  //  this nastiness is required because string literals decay to char* and
+  //  char* implicitly converts to bool
+  template <typename Y, typename T = std::enable_if_t<std::is_same<Y, bool>{}>>
+  State(Y isAccept) : State("", isAccept) {}
+  State() : State(false) {}
+
   ~State() = default;
   State(const State& other) = delete;
   State(State&& other) noexcept = default;
@@ -64,14 +95,15 @@ public:
       this->transitions_.erase(it);
     }
   }
-  std::string name() { return name_; }
-  std::vector<Transition> transitions() { return transitions_; }
 
-  bool isAccept() { return isAccept_; }
+  CONST_MEMBER_FUNC_GETTER(name, name_);
+  CONST_MEMBER_FUNC_GETTER_TYPED(const auto&, transitions, transitions_);
+  CONST_MEMBER_FUNC_GETTER(isAccept, isAccept_);
+
   void setAccept(bool e = true) { isAccept_ = e; }
 
   // each state is unique and no epsilon
-  bool isDFAEligible();
+  CONST_MEMBER_FUNC(bool, isDFAEligible);
 };
 
 // class AssembledRegex {
@@ -115,7 +147,7 @@ public:
 class StateList {
 private:
   std::vector<std::unique_ptr<State>> states_;
-  State* entry_;
+  State* entry_ = nullptr;
 
 public:
   StateList() = default;
@@ -142,33 +174,37 @@ public:
   //   }
   // }
 
-  const std::vector<std::unique_ptr<State>>& states() {
-    return const_cast<const StateList*>(this)->states();
-  }
-  const std::vector<std::unique_ptr<State>>& states() const { return states_; }
+  CONST_MEMBER_FUNC_GETTER_TYPED(const auto&, states, states_);
+
   void add(std::unique_ptr<State> s) { states_.push_back(std::move(s)); }
   void addEntry(std::unique_ptr<State> s) {
     setEntry(s.get());
     add(std::move(s));
   }
   void setEntry(State* s) { this->entry_ = s; }
-  State* entry() { return const_cast<const StateList*>(this)->entry(); }
-  State* entry() const {
-    if(states_.empty()) return nullptr;
-    else if(entry_ != nullptr) return entry_;
-    else return states_[0].get();
-  }
+
+  // CONST_MEMBER_FUNC_BODY(State*, entry, {
+  //   if(states_.empty()) return nullptr;
+  //   else if(entry_ != nullptr) return entry_;
+  //   else return nullptr;
+  // });
+  CONST_MEMBER_FUNC_GETTER(entry, entry_);
+
   void concatWith(StateList& other);
   void unionWith(StateList& other);
   void kleene();
   std::unique_ptr<dot::Graph> toGraph(std::string_view);
 
-  void prune() { pruneOnlyEpsilonLeaving(); }
+  void prune() { 
+    pruneOnlyEpsilonLeaving(); 
+    // if no transitions leave and its not an accept, prune
+    // if no transitions enter and its not an accept, prune
+    }
 
-  bool isDFA();
-  StateList buildDFA();
+  CONST_MEMBER_FUNC(bool, isDFA);
+  CONST_MEMBER_FUNC(StateList, buildDFA);
 
-  CompiledRegex compile();
+  CONST_MEMBER_FUNC(CompiledRegex, compile);
 
   // std::string toC(std::string nameSuffix = "", std::string namePrefix="rr");
   // std::string toAsm();

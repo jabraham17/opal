@@ -8,7 +8,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
-bool State::isDFAEligible() {
+bool State::isDFAEligible() const {
   // every state we point to is unique and does not have an epsilon trans
   std::unordered_set<State*> states;
   for(auto t : this->transitions()) {
@@ -92,9 +92,13 @@ std::unique_ptr<dot::Graph> StateList::toGraph(std::string_view name) {
 
   auto entryDummy = g->addVertex();
   entryDummy->setAttribute("shape", "point");
-  auto entry = this->entry();
-  auto entryNode = nodes.at(entry);
-  g->addEdge(entryDummy, entryNode);
+  if(auto entry = this->entry()) {
+    auto it = nodes.find(entry);
+    if(it != nodes.end()) {
+      auto entryNode = it->second;
+      g->addEdge(entryDummy, entryNode);
+    }
+  }
 
   // add all transitions between nodes
   for(const auto& s : this->states()) {
@@ -162,7 +166,7 @@ void StateList::pruneOnlyEpsilonLeaving() {
   }
 }
 
-bool StateList::isDFA() {
+bool StateList::isDFA() const {
   // all states must be a DFA
   for(const auto& s : this->states()) {
     if(!s->isDFAEligible()) return false;
@@ -170,10 +174,85 @@ bool StateList::isDFA() {
   // must have an entry as well
   return this->entry() != nullptr;
 }
-// StateList StateList::buildDFA() {}
+
+#include <set>
+
+// have to use set, or define my own hash func for unordered_set
+using Set = std::set<State*>;
+using PowerSet = std::set<Set>;
+
+static PowerSet
+buildPowerset(const std::vector<std::unique_ptr<State>>& states) {
+  PowerSet powerset;
+  for(const auto& s : states) {
+    auto state = s.get();
+    for(const auto& set : powerset) {
+      auto newSet = set;
+      newSet.insert(state);
+      powerset.insert(newSet);
+    }
+    powerset.insert({state});
+  }
+  Set empty;
+  powerset.insert(empty);
+  return powerset;
+}
+
+static bool containsAcceptState(const Set& set) {
+  return std::any_of(set.begin(), set.end(), [](auto s) {
+    return s->isAccept();
+  });
+}
+
+#include <queue>
+
+// returns set of all reachable nodes from `from`, including itself
+static Set reachableWithoutConsuming(State* from) {
+  Set reachable;
+  std::queue<State*> toExplore;
+  toExplore.push(from);
+  while(!toExplore.empty()) {
+    auto next = toExplore.front();
+    toExplore.pop();
+    reachable.insert(next);
+    for(const auto& t : next->transitions()) {
+      if(t.isEpsilon()) toExplore.push(t.toState());
+    }
+  }
+  return reachable;
+}
+
+// walk epsilon transitions from `from` until we run out or find `to`
+static bool reachableWithoutConsuming(State* from, State* to) {
+  std::queue<State*> toExplore;
+  toExplore.push(from);
+  while(!toExplore.empty()) {
+    auto next = toExplore.front();
+    toExplore.pop();
+    if(next == to) return true;
+    for(const auto& t : next->transitions()) {
+      if(t.isEpsilon()) toExplore.push(t.toState());
+    }
+  }
+  return false;
+}
+
+static bool allReachableWithoutConsuming(State* from, const Set& set) {
+  return std::all_of(set.begin(), set.end(), [from](auto to) {
+    return reachableWithoutConsuming(from, to);
+  });
+}
+
+static State* findStateInMap(
+    const Set& toFind,
+    std::unordered_map<const Set*, State*> NSetToD) {
+  for(const auto& [set, state] : NSetToD) {
+    if(toFind == *set) return state;
+  }
+  return nullptr;
+}
 
 /*
-
 power set construction of DFA D from NFA N
 
 states in D is powerset of N states
@@ -182,11 +261,108 @@ start state is any state reachable without consuming from the start state of N
 
 accept states of D are any states that have an accept state from N
 
-
-
 */
+StateList StateList::buildDFA() const {
+  const StateList& N = *this;
+  StateList D;
 
-CompiledRegex StateList::compile() {
+  // build D's states
+  // states in D is powerset of N states
+  auto powerset = buildPowerset(N.states());
+  // contains mapping of D's states to set of N states
+  std::unordered_map<State*, const Set*> DToNSet;
+  // contains mapping of set of N states to D's states;
+  std::unordered_map<const Set*, State*> NSetToD;
+
+  for(const auto& nSet : powerset) {
+    State* dState;
+    {
+      // dStateAlloc is dead after std::move, block prevents programmer
+      // mistakes
+      std::string label = "";
+      std::string sep;
+      for(auto s : nSet) {
+        label += sep + s->name();
+        if(s->name() != "") sep = ",";
+      }
+      auto dStateAlloc = std::make_unique<State>(label);
+      dState = dStateAlloc.get();
+      D.add(std::move(dStateAlloc));
+    }
+    DToNSet.insert_or_assign(dState, &nSet);
+    NSetToD.insert_or_assign(&nSet, dState);
+
+    // if any of the states in 'nSet' are an accept state, dState is an accept
+    if(containsAcceptState(nSet)) {
+      dState->setAccept(true);
+    }
+
+    // Determine D's start state: start state is any state reachable without
+    // consuming from the start state of N
+
+    // if all of the states in nSet are reachable via an epsilon transition from
+    // the start state, this is a start state candidate. if there is no start
+    // state, this is our start state. if there is a start state, the larger set
+    // of states from N is the new start state
+    if(allReachableWithoutConsuming(N.entry(), nSet)) {
+      if(!D.entry()) {
+        D.setEntry(dState);
+      } else {
+        auto dEntrySet = DToNSet.at(D.entry());
+        if(nSet.size() > dEntrySet->size()) {
+          D.setEntry(dState);
+        }
+      }
+    }
+  }
+
+  /*
+  for dfaState: dfa.states:
+    map(char, set(state)) dfaTrans;
+    nfaSet = DToNSet[dfaState];
+    for nfaState : nfaSet
+      for t: nfaState.transitions:
+        if ! t.epsilon()
+          dfaTrans[t.label].add(t.toState)
+          dfaTrans[t.label].add(reachableFrom(t.toState))
+  */
+  //  for each state, build the DFA transfer table, which is all states
+  //  reachable for a given transition
+  // once thats built, we can translate that set into another dfa state, which
+  // becomes our toState
+  for(const auto& dfaState_ : D.states()) {
+    auto dfaState = dfaState_.get();
+    std::unordered_map<std::string, Set> dfaTransferTable;
+    auto nfaSet = DToNSet.at(dfaState);
+    for(const auto& nfaState : *nfaSet) {
+      // for each non epsilon transition, add a transition
+      // then to the same transition, add all reachable via epsilon
+      for(const auto& t : nfaState->transitions()) {
+        if(!t.isEpsilon()) {
+          auto it = dfaTransferTable.find(t.label());
+          if(it == dfaTransferTable.end()) {
+            Set empty;
+            it = dfaTransferTable.insert(it, {t.label(), empty});
+          }
+          auto& dfaTransElm = it->second;
+          //  returns all reachable without consuming
+          for(auto& reachable : reachableWithoutConsuming(t.toState())) {
+            dfaTransElm.insert(reachable);
+          }
+        }
+      }
+    }
+    // convert the set of states in the transfer table into dfaStates
+    for(const auto& [label, toNfaSet] : dfaTransferTable) {
+      auto toDfaState = findStateInMap(toNfaSet, NSetToD);
+      if(toDfaState) dfaState->addTransition(toDfaState, label);
+    }
+  }
+
+  return D;
+}
+
+CompiledRegex StateList::compile() const {
   CompiledRegex cr;
 
   std::unordered_map<State*, InstructionList*> blocks;
