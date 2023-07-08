@@ -83,7 +83,13 @@ std::optional<StateList> Parser::parse_expr(
     // consume the char
     auto start = std::make_unique<State>();
     auto accept = std::make_unique<State>(true);
-    start->addTransition(accept.get(), next);
+
+    if(next == '_') {
+      // epsilon trans
+      start->addTransition(accept.get());
+    } else {
+      start->addTransition(accept.get(), next);
+    }
 
     auto start_ptr = start.get();
     auto accept_ptr = accept.get();

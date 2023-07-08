@@ -8,8 +8,10 @@
 #include <string>
 /*simple, easy to parse grammar
 later we can build a simple push down stack parser without . using precedence
+_ is epsilon
 
 expr -> CHAR
+expr -> _
 expr -> (expr).(expr)
 expr -> (expr)|(expr)
 expr -> (expr)*
