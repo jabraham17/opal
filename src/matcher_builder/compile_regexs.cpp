@@ -1,11 +1,10 @@
 
-#include "DFA.h"
+#include "parser/parse_regex.h"
+#include "state/DFA.h"
 
 #include <fstream>
 #include <iostream>
 #include <vector>
-
-#include "parse_regex.h"
 
 int main(int argc, char** argv) {
 
@@ -37,9 +36,6 @@ int main(int argc, char** argv) {
   std::ofstream outAsm("bin/matchers.asm");
   std::ofstream outDefs("bin/defs.c");
 
-
-
-
   for(auto it = patterns.begin(); it != patterns.end(); it++) {
     auto idx = std::distance(patterns.begin(), it);
     std::string name = "match" + std::to_string(idx);
@@ -47,9 +43,7 @@ int main(int argc, char** argv) {
     outDefs << it->second.toHeader(name) << "\n";
   }
 
-
-
-    outDefs << "typedef long (*matchFunc)(const char*, long);\n";
+  outDefs << "typedef long (*matchFunc)(const char*, long);\n";
 
   outDefs << "long nPatterns = " << std::to_string(patterns.size()) << ";\n";
   outDefs << "matchFunc funcs[] = {\n";

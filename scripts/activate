@@ -1,0 +1,58 @@
+
+realpath() {
+  OURPWD=$PWD
+  cd "$(dirname "$1")"
+  LINK=$(readlink "$(basename "$1")")
+  while [ "$LINK" ]; do
+    cd "$(dirname "$LINK")"
+    LINK=$(readlink "$(basename "$1")")
+  done
+  REALPATH="$PWD/$(basename "$1")"
+  cd "$OURPWD"
+  echo "$REALPATH"
+}
+SCRIPT_NAME=
+if [ -z $BASH_SOURCE ]; then
+  SCRIPT_NAME=$0
+else
+  SCRIPT_NAME=${BASH_SOURCE[0]}
+fi
+SCRIPT_DIR=$(realpath "$(dirname "$SCRIPT_NAME")")
+source $SCRIPT_DIR/env
+
+export _OPAL_OLD_PATH=$PATH
+export PATH=${PATH}:${OPAL_SCRIPTS}
+export _OPAL_OLD_PS1="${PS1:-}"
+export PS1='(opal-env)'${PS1}
+
+build_release() {
+  (cd $OPAL_HOME && set -x && make -j`nproc` $@)
+}
+export -f build_release
+build_debug() {
+  (cd $OPAL_HOME && set -x && make -j`nproc` DEBUG=1 $@)
+}
+export -f build_debug
+
+deactivate() {
+  export -n build_release
+  export -n build_debug
+
+
+  export -n OPAL_HOME
+  export -n OPAL_SCRIPTS
+  export -n OPAL_TEST
+  export -n OPAL_TEST_BUILD
+
+  if [ -n "${_OPAL_OLD_PATH:-}" ] ; then
+    export PATH="${_OPAL_OLD_PATH:-}"
+    export -n _OPAL_OLD_PATH
+  fi
+    if [ -n "${_OPAL_OLD_PS1:-}" ] ; then
+    export PS1="${_OPAL_OLD_PS1:-}"
+    export -n _OPAL_OLD_PS1
+  fi
+  
+  export -n deactivate
+}
+export -f deactivate

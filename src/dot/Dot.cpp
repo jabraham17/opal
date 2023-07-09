@@ -1,6 +1,6 @@
 #include "Dot.h"
 
-#include "utils.h"
+#include "common/utils.h"
 
 #include <algorithm>
 #include <sstream>

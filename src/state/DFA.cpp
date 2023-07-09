@@ -1,6 +1,6 @@
 #include "DFA.h"
 
-#include "Instruction.h"
+#include "codegen/Instruction.h"
 
 #include <algorithm>
 #include <cassert>

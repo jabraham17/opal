@@ -1,6 +1,6 @@
 #include "Instruction.h"
 
-#include "DFA.h"
+#include "state/DFA.h"
 
 #include <sstream>
 

@@ -1,8 +1,8 @@
 
 #ifndef DFA_H_
 #define DFA_H_
-#include "Dot.h"
-#include "Instruction.h"
+#include "codegen/Instruction.h"
+#include "dot/Dot.h"
 
 #include <functional>
 #include <iostream>
@@ -195,12 +195,12 @@ public:
   void kleene();
   std::unique_ptr<dot::Graph> toGraph(std::string_view);
 
-  void prune() { 
-    pruneOnlyEpsilonLeaving(); 
+  void prune() {
+    pruneOnlyEpsilonLeaving();
     pruneDeadStates();
     // if no transitions leave and its not an accept, prune
     // if no transitions enter and its not an accept, prune
-    }
+  }
 
   CONST_MEMBER_FUNC(bool, isDFA);
   CONST_MEMBER_FUNC(StateList, buildDFA);

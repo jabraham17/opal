@@ -1,10 +1,9 @@
 
-#include "DFA.h"
+#include "parser/parse_regex.h"
+#include "state/DFA.h"
 
 #include <fstream>
 #include <iostream>
-
-#include "parse_regex.h"
 
 int main() {
 

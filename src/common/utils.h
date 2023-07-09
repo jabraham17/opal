@@ -1,5 +1,5 @@
-#ifndef SAPPHIRE_COMMON_UTILS_H_
-#define SAPPHIRE_COMMON_UTILS_H_
+#ifndef OPAL_COMMON_UTILS_H_
+#define OPAL_COMMON_UTILS_H_
 #include <functional>
 #include <initializer_list>
 #include <string>

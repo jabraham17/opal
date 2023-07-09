@@ -1,6 +1,6 @@
 
 
-#include "DFA.h"
+#include "state/DFA.h"
 
 #include <optional>
 // #include <tuple>
