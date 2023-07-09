@@ -228,7 +228,6 @@ void StateList::pruneDeadStates() {
     // walk the tree from the entry and build a set of undead nodes
     auto reachable = reachableStates(this->entry());
 
-
     auto it = this->states_.begin();
     while(it != this->states_.end()) {
       auto state = it->get();
@@ -254,14 +253,15 @@ void StateList::pruneDeadStates() {
       }
     }
 
-
-  auto g = toGraph("g");
-  auto s = g->toString();
-  std::ofstream plain("out"+std::to_string(++i)+".dot");
-  plain << s << "\n";
-  plain.close();
-  system(std::string("dot -Tpng out"+std::to_string(i)+".dot -o out"+std::to_string(i)+".png").c_str());
-
+    auto g = toGraph("g");
+    auto s = g->toString();
+    std::ofstream plain("out" + std::to_string(++i) + ".dot");
+    plain << s << "\n";
+    plain.close();
+    system(std::string(
+               "dot -Tpng out" + std::to_string(i) + ".dot -o out" +
+               std::to_string(i) + ".png")
+               .c_str());
   }
 }
 
@@ -424,8 +424,8 @@ StateList StateList::buildDFA() const {
           dfaTrans[t.label].add(t.toState)
           dfaTrans[t.label].add(reachableFrom(t.toState))
   */
-  //  for each state, build the DFA transfer table, which is all states
-  //  reachable for a given transition
+  // for each state, build the DFA transfer table, which is all states
+  // reachable for a given transition
   // once thats built, we can translate that set into another dfa state, which
   // becomes our toState
   for(const auto& dfaState_ : D.states()) {
