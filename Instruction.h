@@ -31,6 +31,10 @@ private:
   bool hasInitialValue_ = false;
 
 public:
+  Variable()
+      : type(Types::INT), initialValue(0), name(), reg(X86Register::NONE),
+        isParameter_(false), isImmediate_(false), hasInitialValue_(false) {}
+
   bool hasInitialValue() { return hasInitialValue_; }
   bool hasName() { return !isImmediate_; }
   bool isParameter() { return isParameter_; }
@@ -38,14 +42,14 @@ public:
   bool isImmediate() { return isImmediate_; }
 
   std::string getInitialValue(bool forAsm = false) {
-    assert(hasInitialValue());
+    // assert(hasInitialValue());
     if(!forAsm)
       return "(" + toString(type) + ")" + std::to_string(initialValue) + "U";
     else return std::to_string(initialValue);
   }
 
   std::string getLValue(bool forAsm = false) {
-    assert(!isImmediate());
+    // assert(!isImmediate());
     return !forAsm ? name : getReg();
   }
   std::string getRValue(bool forAsm = false) {
@@ -55,44 +59,44 @@ public:
 
   std::string getReg() { return toString(reg, type); }
 
-  static Variable buildParameter(
+  static std::unique_ptr<Variable> buildParameter(
       Types type,
       std::string name,
       X86Register reg = X86Register::NONE) {
-    Variable v;
-    v.type = type;
-    v.name = name;
-    v.isParameter_ = true;
-    v.hasInitialValue_ = false;
-    v.reg = reg;
+    auto v = std::make_unique<Variable>();
+    v->type = type;
+    v->name = name;
+    v->isParameter_ = true;
+    v->hasInitialValue_ = false;
+    v->reg = reg;
     return v;
   }
-  static Variable buildLocal(
+  static std::unique_ptr<Variable> buildLocal(
       Types type,
       std::string name,
       unsigned long long initialValue,
       X86Register reg = X86Register::NONE) {
-    Variable v;
-    v.type = type;
-    v.name = name;
-    v.initialValue = initialValue;
-    v.hasInitialValue_ = true;
-    v.reg = reg;
+    auto v = std::make_unique<Variable>();
+    v->type = type;
+    v->name = name;
+    v->initialValue = initialValue;
+    v->hasInitialValue_ = true;
+    v->reg = reg;
     return v;
   }
-  static Variable buildLocal(
+  static std::unique_ptr<Variable> buildLocal(
       Types type,
       std::string name,
       X86Register reg = X86Register::NONE) {
-    Variable v;
-    v.type = type;
-    v.name = name;
-    v.hasInitialValue_ = false;
-    v.reg = reg;
+    auto v = std::make_unique<Variable>();
+    v->type = type;
+    v->name = name;
+    v->hasInitialValue_ = false;
+    v->reg = reg;
     return v;
   }
   static Variable* buildImmediate(Types type, unsigned long long value) {
-    Variable* v = new Variable;
+    Variable* v = new Variable();
     v->type = type;
     v->initialValue = value;
     v->isImmediate_ = true;
@@ -101,8 +105,8 @@ public:
   }
 };
 struct Instruction {
-  Instruction* prev;
-  Instruction* next;
+  Instruction* prev = nullptr;
+  Instruction* next = nullptr;
   virtual ~Instruction() = default;
   virtual std::vector<unsigned char> toBytes() { return {}; }
   virtual std::string toC() { return ""; }
@@ -114,7 +118,7 @@ struct Instruction {
 };
 struct NOP : public Instruction {
   std::vector<unsigned char> toBytes() override { return {}; }
-  std::string toC() override { return ""; }
+  std::string toC() override { return this->getCLabel() + ":"; }
   std::string toNasm() override { return this->getNasmLabel() + ":"; }
 };
 
@@ -124,11 +128,15 @@ std::string loadSizeForType(Types loadType);
 struct Load : public Instruction {
   Types loadType;
 
-  Variable* dest;
-  Variable* base;
-  Variable* offset;
+  Variable* dest = nullptr;
+  Variable* base = nullptr;
+  Variable* offset = nullptr;
   std::vector<unsigned char> toBytes() override { return {}; }
-  std::string toC() override { return ""; }
+  std::string toC() override {
+    std::string ret = dest->getLValue() + " = *(" + base->getRValue() + " + " +
+                      offset->getRValue() + ");";
+    return ret;
+  }
   std::string toNasm() override {
     std::string ext = loadExtForType(dest->type, loadType);
     std::string size = loadSizeForType(loadType);
@@ -140,10 +148,13 @@ struct Load : public Instruction {
   }
 };
 struct Add : public Instruction {
-  Variable* dest;
-  Variable* op1;
+  Variable* dest = nullptr;
+  Variable* op1 = nullptr;
   std::vector<unsigned char> toBytes() override { return {}; }
-  std::string toC() override { return ""; }
+  std::string toC() override {
+    std::string ret = dest->getLValue() + " += " + op1->getRValue() + ";";
+    return ret;
+  }
   std::string toNasm() override {
     std::string ret =
         "add " + dest->getLValue(true) + ", " + op1->getRValue(true);
@@ -153,21 +164,28 @@ struct Add : public Instruction {
 enum class ConditionCode { EQ, NEQ, GT, GTEQ, LT, LTEQ };
 std::string toString(ConditionCode cc, bool isAsm = false);
 struct Jump : public Instruction {
-  Instruction* target;
+  Instruction* target = nullptr;
   std::vector<unsigned char> toBytes() override { return {}; }
-  std::string toC() override { return ""; }
+  std::string toC() override {
+    std::string ret = "goto " + target->getCLabel() + ";";
+    return ret;
+  }
   std::string toNasm() override {
     std::string ret = "jmp " + target->getNasmLabel();
     return ret;
   }
 };
 struct ConditionalJump : public Instruction {
-  Variable* lhs;
-  Variable* rhs;
+  Variable* lhs = nullptr;
+  Variable* rhs = nullptr;
   ConditionCode cc;
-  Instruction* target;
+  Instruction* target = nullptr;
   std::vector<unsigned char> toBytes() override { return {}; }
-  std::string toC() override { return ""; }
+  std::string toC() override {
+    std::string ret = "if(" + lhs->getRValue() + " " + toString(cc) + " " +
+                      rhs->getRValue() + ") goto " + target->getCLabel() + ";";
+    return ret;
+  }
   std::string toNasm() override {
     std::string ret = "cmp " + lhs->getRValue(true) + ", " +
                       rhs->getRValue(true) + "\n" + "j" + toString(cc, true) +
@@ -176,10 +194,13 @@ struct ConditionalJump : public Instruction {
   }
 };
 struct Copy : public Instruction {
-  Variable* dest;
-  Variable* source;
+  Variable* dest = nullptr;
+  Variable* source = nullptr;
   std::vector<unsigned char> toBytes() override { return {}; }
-  std::string toC() override { return ""; }
+  std::string toC() override {
+    std::string ret = dest->getLValue() + " = " + source->getRValue() + ";";
+    return ret;
+  }
   std::string toNasm() override {
     std::string ret =
         "mov " + dest->getLValue(true) + ", " + source->getRValue(true);
@@ -187,9 +208,12 @@ struct Copy : public Instruction {
   }
 };
 struct Return : public Instruction {
-  Variable* value;
+  Variable* value = nullptr;
   std::vector<unsigned char> toBytes() override { return {}; }
-  std::string toC() override { return ""; }
+  std::string toC() override {
+    std::string ret = this->getCLabel() + ": return" + value->getRValue() + ";";
+    return ret;
+  }
   std::string toNasm() override {
     std::string ret = this->getNasmLabel() + ":\n" + "ret";
     return ret;
@@ -279,18 +303,20 @@ struct InstructionList {
   //     delete tmp;
   //   }
   // }
-  InstructionList(const InstructionList& other) {
-    this->head = other.head;
-    this->tail = other.tail;
-    this->owning = false;
-  }
+  InstructionList(const InstructionList& other) = delete;
+  // InstructionList(const InstructionList& other) {
+  //   this->head = other.head;
+  //   this->tail = other.tail;
+  //   this->owning = false;
+  // }
   InstructionList(InstructionList&& other) noexcept = default;
-  InstructionList& operator=(const InstructionList& other) {
-    this->head = other.head;
-    this->tail = other.tail;
-    this->owning = false;
-    return *this;
-  }
+  InstructionList& operator=(const InstructionList& other) = delete;
+  // InstructionList& operator=(const InstructionList& other) {
+  //   this->head = other.head;
+  //   this->tail = other.tail;
+  //   this->owning = false;
+  //   return *this;
+  // }
   InstructionList& operator=(InstructionList&& other) noexcept = default;
 
   bool isEmpty() { return this->head == nullptr && this->tail == nullptr; }
@@ -425,9 +451,16 @@ struct InstructionList {
 template <size_t Parameters, size_t Locals> struct Function {
   Types retType;
   std::array<Types, Parameters> argTypes;
-  std::array<Variable, Parameters + Locals> variables;
+  std::array<std::unique_ptr<Variable>, Parameters + Locals> variables;
   InstructionList instructions;
   std::string signature(std::string name);
+
+  Function() = default;
+  ~Function() = default;
+  Function(const Function& other) = delete;
+  Function(Function&& other) noexcept = default;
+  Function& operator=(const Function& other) = delete;
+  Function& operator=(Function&& other) noexcept = default;
 };
 
 class State;
@@ -441,28 +474,33 @@ public:
     func.argTypes[1] = Types::LONG;
 
     //  parameters
-    *_input() = Variable::buildParameter(
+    input_() = Variable::buildParameter(
         func.argTypes[0],
         "input",
         argumentRegisters[0]);
-    *_length() = Variable::buildParameter(
+    length_() = Variable::buildParameter(
         func.argTypes[1],
         "length",
         argumentRegisters[1]);
 
     // locals
-    *_counter() =
+    counter_() =
         Variable::buildLocal(Types::LONG, "counter", 0, argumentRegisters[2]);
-    *_longestMatch() =
+    longestMatch_() =
         Variable::buildLocal(Types::LONG, "longestMatch", -1, returnRegister);
-    *_next() = Variable::buildLocal(Types::CHAR, "next", argumentRegisters[3]);
+    next_() = Variable::buildLocal(Types::CHAR, "next", argumentRegisters[3]);
 
     doneState = new Return();
-    ((Return*)doneState)->value = _longestMatch();
+    ((Return*)doneState)->value = longestMatch_().get();
     func.instructions.addBack(doneState);
 
     insertPoint = nullptr;
   }
+  ~CompiledRegex() = default;
+  CompiledRegex(const CompiledRegex& other) = delete;
+  CompiledRegex(CompiledRegex&& other) noexcept = default;
+  CompiledRegex& operator=(const CompiledRegex& other) = delete;
+  CompiledRegex& operator=(CompiledRegex&& other) noexcept = default;
 
 public:
   std::string toC(std::string name = "match");
@@ -480,11 +518,11 @@ private:
   Function<2, 3> func;
   Instruction* doneState;
   Instruction* insertPoint;
-  Variable* _input() { return &func.variables[0]; }
-  Variable* _length() { return &func.variables[1]; }
-  Variable* _counter() { return &func.variables[2]; }
-  Variable* _longestMatch() { return &func.variables[3]; }
-  Variable* _next() { return &func.variables[4]; }
+  std::unique_ptr<Variable>& input_() { return func.variables[0]; }
+  std::unique_ptr<Variable>& length_() { return func.variables[1]; }
+  std::unique_ptr<Variable>& counter_() { return func.variables[2]; }
+  std::unique_ptr<Variable>& longestMatch_() { return func.variables[3]; }
+  std::unique_ptr<Variable>& next_() { return func.variables[4]; }
 };
 
 #endif

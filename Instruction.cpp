@@ -103,15 +103,15 @@ std::string CompiledRegex::toNasm(std::string name) {
   ss << name << ":\n";
 
   // variable init
-  for(auto p : func.variables) {
-    if(p.isLocal() && p.hasInitialValue()) {
-      auto val = p.initialValue;
+  for(auto& p : func.variables) {
+    if(p->isLocal() && p->hasInitialValue()) {
+      auto val = p->initialValue;
       // if zero, do an xor of the 32 bit version
       if(val == 0) {
-        auto r = toString(p.reg, Types::INT);
+        auto r = toString(p->reg, Types::INT);
         ss << "  xor " << r << ", " << r << "\n";
       } else {
-        auto r = toString(p.reg, p.type);
+        auto r = toString(p->reg, p->type);
         ss << "  mov " << r << ", " << val << "\n";
       }
     }
@@ -131,9 +131,9 @@ std::string Function<Parameters, Locals>::signature(std::string name) {
   // func header
   ss << toString(retType) << " " << name << "(";
   std::string sep;
-  for(auto p : variables) {
-    if(p.isParameter()) {
-      ss << sep << toString(p.type) << " " << p.name;
+  for(auto& p : variables) {
+    if(p->isParameter()) {
+      ss << sep << toString(p->type) << " " << p->name;
       sep = ", ";
     }
   }
@@ -152,40 +152,17 @@ std::string CompiledRegex::toC(std::string name) {
   ss << func.signature(name) << " {\n";
 
   // variable init
-  for(auto p : func.variables) {
-    if(p.isLocal()) {
-      ss << "  " << toString(p.type) << " " << p.name;
-      if(p.hasInitialValue()) ss << " = " << p.getInitialValue();
+  for(auto& p : func.variables) {
+    if(p->isLocal()) {
+      ss << "  " << toString(p->type) << " " << p->name;
+      if(p->hasInitialValue()) ss << " = " << p->getInitialValue();
       ss << ";\n";
     }
   }
 
   // code gen functions
   for(auto i : func.instructions) {
-    if(NOP* inst = dynamic_cast<NOP*>(i)) {
-      ss << "state_" << intptr_t(inst) << ":\n";
-    } else if(Load* inst = dynamic_cast<Load*>(i)) {
-      ss << "  " << inst->dest->getLValue() << " = *("
-         << inst->base->getRValue() << " + " << inst->offset->getRValue()
-         << ");\n";
-    } else if(Add* inst = dynamic_cast<Add*>(i)) {
-      ss << "  " << inst->dest->getLValue() << " += " << inst->op1->getRValue()
-         << ";\n";
-    } else if(Jump* inst = dynamic_cast<Jump*>(i)) {
-      ss << "  goto state_" << intptr_t(inst->target) << ";\n";
-    } else if(ConditionalJump* inst = dynamic_cast<ConditionalJump*>(i)) {
-      ss << "  if(" << inst->lhs->getRValue() << " " << toString(inst->cc)
-         << " " << inst->rhs->getRValue() << ")";
-      ss << " goto state_" << intptr_t(inst->target) << ";\n";
-    } else if(Copy* inst = dynamic_cast<Copy*>(i)) {
-      ss << "  " << inst->dest->getLValue() << " = "
-         << inst->source->getRValue() << ";\n";
-    } else if(Return* inst = dynamic_cast<Return*>(i)) {
-      ss << "state_" << intptr_t(inst) << ":\n";
-      ss << "  return " << inst->value->getRValue() << ";\n";
-    } else {
-      ss << i->toC();
-    }
+    ss << i->toC();
   }
   ss << "}";
   return ss.str();
@@ -200,23 +177,23 @@ InstructionList* CompiledRegex::getNewBlockForState(State* state) {
 
   // check for i >= n
   ConditionalJump* cjmp = new ConditionalJump;
-  cjmp->lhs = _counter();
-  cjmp->rhs = _length();
+  cjmp->lhs = counter_().get();
+  cjmp->rhs = length_().get();
   cjmp->cc = ConditionCode::GTEQ;
   cjmp->target = doneState;
   il->addBack(cjmp);
 
   // read char
   Load* load = new Load;
-  load->base = _input();
-  load->offset = _counter();
+  load->base = input_().get();
+  load->offset = counter_().get();
   load->loadType = Types::CHAR;
-  load->dest = _next();
+  load->dest = next_().get();
   il->addBack(load);
 
   // inc counter
   Add* add = new Add;
-  add->dest = _counter();
+  add->dest = counter_().get();
   add->op1 = Variable::buildImmediate(Types::LONG, 1);
   il->addBack(add);
 
@@ -242,13 +219,13 @@ void CompiledRegex::finishBlock(InstructionList* il) {
 
 Instruction* CompiledRegex::storeMatch() {
   Copy* inst = new Copy;
-  inst->source = _counter();
-  inst->dest = _longestMatch();
+  inst->source = counter_().get();
+  inst->dest = longestMatch_().get();
   return inst;
 }
 Instruction* CompiledRegex::matchChar(char c, Instruction* jumpTo) {
   ConditionalJump* cjmp = new ConditionalJump;
-  cjmp->lhs = _next();
+  cjmp->lhs = next_().get();
   cjmp->rhs = Variable::buildImmediate(Types::CHAR, c);
   cjmp->cc = ConditionCode::EQ;
   cjmp->target = jumpTo;

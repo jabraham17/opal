@@ -30,7 +30,7 @@ int main(int argc, char** argv) {
     }
 
     auto cr = dfa.compile();
-    patterns.push_back({str, cr});
+    patterns.push_back({str, std::move(cr)});
   }
 
   system("mkdir -p bin");
