@@ -1,3 +1,5 @@
+#ifndef OPAL_PARSER_PARSE_REGEX_H_
+#define OPAL_PARSER_PARSE_REGEX_H_
 
 
 #include "state/DFA.h"
@@ -43,3 +45,4 @@ private:
       size_t& offset,
       std::function<void(std::string_view msg)> errFunc);
 };
+#endif

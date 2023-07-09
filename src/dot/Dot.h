@@ -1,3 +1,5 @@
+#ifndef OPAL_DOT_DOT_H_
+#define OPAL_DOT_DOT_H_
 
 #ifndef _SIMPLEASSEMBLER_DOTWRITER_H_
 #define _SIMPLEASSEMBLER_DOTWRITER_H_
@@ -144,3 +146,4 @@ private:
 
 } // namespace dot
 #endif //_SIMPLEASSEMBLER_DOTWRITER_H_
+#endif

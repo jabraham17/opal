@@ -1,5 +1,5 @@
-#ifndef INSTRUCTION_H_
-#define INSTRUCTION_H_
+#ifndef OPAL_CODEGEN_INSTRUCTION_H_
+#define OPAL_CODEGEN_INSTRUCTION_H_
 
 #include <array>
 #include <cassert>

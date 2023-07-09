@@ -1,3 +1,5 @@
+#ifndef OPAL_STATE_DFA_H_
+#define OPAL_STATE_DFA_H_
 
 #ifndef DFA_H_
 #define DFA_H_
@@ -238,4 +240,5 @@ private:
 //   DFA();
 // };
 
+#endif
 #endif
