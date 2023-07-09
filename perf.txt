@@ -1,0 +1,13 @@
+for perf
+
+'((s).(u)).(((p).(p)).((e).(r)))'
+'((s).(u)).(((p).(p)).((e).(r)))'
+'(((s).(u)).(((p).(p)).((e).(r))))|(t)'
+'(((s).(u)).(((p).(p)).((e).(r))))|(((a).(c)).(e))'
+'(((s).(u)).(((p).(p)).((e).(r))))|((((a).(b)).((c).(d))).((1).(e)))'
+
+
+perf record --call-graph dwarf -- yourapp
+perf report -g graph --no-children
+perf record --call-graph lbr --
+perf report
